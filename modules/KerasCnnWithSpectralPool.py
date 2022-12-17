@@ -2,7 +2,7 @@ from .CustomLayers import Spectral_Conv_Layer, Spectral_Pool_Layer
 import tensorflow as tf
 
 class CNN_Spectral_Pool(tf.keras.Model):
-    """CNN with spectral pooling layers and options for convolution layers."""
+    #CNN with spectral pooling layers and convolution layer options
     def __init__(self,
                  M,
                  l2_norm,
@@ -13,14 +13,14 @@ class CNN_Spectral_Pool(tf.keras.Model):
                  use_parameterization = True
                  ):
         super(CNN_Spectral_Pool, self).__init__()
-        # --------------------------------------------------------------------------------------------------------------
         self.num_classes = num_classes
-        self.M = M  # M is the total number of convolution and spectral-pool layer-pairs
+        # M - total pairs - convolution and spectral-pool layer-pairs
+        self.M = M
         self.alpha = alpha
         self.beta = beta
         self.max_num_filters = max_num_filters
         self.parameterization_or_not = use_parameterization
-        # Define Layers to be used in this custom Keras Model-----------------------------------------------------------
+        # layers used in custom keras Model
         self.Spectral_Conv_Layer = Spectral_Conv_Layer
         self.Spectral_Pool_Layer = Spectral_Pool_Layer
         self.conv2d = tf.keras.layers.Conv2D(filters=64, padding='same', kernel_size=3, activation="relu", trainable=True)
@@ -34,12 +34,13 @@ class CNN_Spectral_Pool(tf.keras.Model):
         self.Spectral_Pool_Layer_list = []
         self.conv2d_list = []
         self.filter_size = 3
-        for m in range(1, self.M + 1):  # For m from 1 to M, spectral convolution layer and spectral pool layer differs
-            freq_dropout_lower_bound, freq_dropout_upper_bound = self.Freq_Dropout_Bounds(self.filter_size, m)
-            num_of_filters = self.Num_of_Filters(m)
+        # for m in (1,M) - spectral convolution layers and spectral pooling layers are different
+        for m in range(1, self.M + 1):  
+            frequencyDropoutLowerBound, frequencyDropoutUpperBound = self.Freq_Dropout_Bounds(self.filter_size, m)
+            numOfFilters = self.Num_of_Filters(m)
             self.conv2d_list.append(
                 tf.keras.layers.Conv2D(
-                    filters=num_of_filters,
+                    filters=numOfFilters,
                     padding='same',
                     kernel_size=3,
                     activation="relu",
@@ -49,56 +50,53 @@ class CNN_Spectral_Pool(tf.keras.Model):
             self.Spectral_Pool_Layer_list.append(
                 self.Spectral_Pool_Layer(
                 out_channels=10,
-                freq_dropout_lower_bound=freq_dropout_lower_bound,
-                freq_dropout_upper_bound=freq_dropout_upper_bound,
+                freqDropoutLowerBound=frequencyDropoutLowerBound,
+                frequencyDropoutUpperBound=frequencyDropoutUpperBound,
                 name='Spectral_Pool_Layer{0}'.format(m)))
 
 
     def Num_of_Filters(self, m):
-        """
-        :param m: Current layer number, no more than 6
-        :return: Number of filters for CNN, no more than 288
-        """
+        #m - present layer number <6
+        # return filter number <288
         return min(self.max_num_filters, 96 + 32 * m)
 
     def Freq_Dropout_Bounds(self, size, idx):
-        """
-        Get the bounds for frequency dropout.
-        This function implements the linear parameterization of the
-        probability distribution for frequency dropout in the orginal paper
-        :param size: size of image in layer
-        :param idx: current layer index
-        :return: freq_dropout_lower_bound: The lower bound for the frequency drop off
-                freq_dropout_upper_bound: The upper bound for the frequency drop off
-        """
+        #frequency dropout bounds
+        #implement the linear parameterization of frequency dropout probabiltiy distribution
+        # size - size of image in layer
+        #idx - current layer index
+        #return - frequency dropout lower bound for frequency dropoff and 
+        #frequency dropout upper bound for frequency drop off
+        
         c = self.alpha + (idx / self.M) * (self.beta - self.alpha)
-        freq_dropout_lower_bound = c * (1. + size // 2)
-        freq_dropout_upper_bound = (1. + size // 2)
-        return freq_dropout_lower_bound, freq_dropout_upper_bound
+        frequencyDropoutLowerBound = c * (1. + size // 2)
+        frequencyDropoutUpperBound = (1. + size // 2)
+        return frequencyDropoutLowerBound, frequencyDropoutUpperBound
 
     def call(self, input_tensor):
-        # The first part of the CNN model is pairs of convolutional and spectral pooling layers.
-        for m in range(self.M):  # For m from 1 to M
-            if m == 0:  # It's the first layer, should have input_shape as an argument
-                # x = self.conv2d_list[0](input_tensor) if not use_spectral_parameterization
-                # x = self.Spectral_Conv_Layer_list[0](input_tensor) if use_spectral_parameterization
+        # initial part of CNN model - pairs of convolution and spectral pooling layers
+        # from m in range(1 to M)
+        for m in range(self.M):
+            # first layer - input shape as an argument
+            if m == 0:  
+                # x = self.conv2d_list[0](input_tensor) if not useSpectralParameterization
+                # x = self.Spectral_Conv_Layer_list[0](input_tensor) if useSpectralParameterization
                 if self.parameterization_or_not:
                     x = self.conv2d_list[0](input_tensor)
-                    #print('after {0} spectral_conv'.format(m),x), used for debug
                 else:
-                    x = self.Spectral_Conv_Layer_list[0](input_tensor)  # spectral_conv_layer
-                    #print('after {0} conv'.format(m),x), used for debug
-            else:  # It's not the first layer
-                # x = self.conv2d_list[m](input_tensor) if not use_spectral_parameterization
-                # x = self.Spectral_Conv_Layer_list[m](input_tensor) if use_spectral_parameterization
+                    #spectral convolution layer
+                    x = self.Spectral_Conv_Layer_list[0](input_tensor)
+            #it is not the first layer        
+            else: 
+                # x = self.conv2d_list[m](input_tensor) if not useSpectralParameterization
+                # x = self.Spectral_Conv_Layer_list[m](input_tensor) if useSpectralParameterization
                 if self.parameterization_or_not:
                     x = self.conv2d_list[m](x)
-                    #print('after {0} spectral_conv'.format(m),x),used for debug
                 else:
-                    x = self.Spectral_Conv_Layer_list[m](x) # spectral_conv_layer
-                    #print('after {0} conv'.format(m),x), used for debug
-            x = self.Spectral_Pool_Layer_list[m](x)  # spectral_pool_layer is added whatever
-        ###########################################################################################
+                    #spectral convolution layer 
+                    x = self.Spectral_Conv_Layer_list[m](x)
+            # spectral_pool_layer is added
+            x = self.Spectral_Pool_Layer_list[m](x)  
         x = self.flatten(input_tensor)
         x = self.dense1000(x)
         x = self.dense100(x)
