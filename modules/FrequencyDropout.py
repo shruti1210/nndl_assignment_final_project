@@ -2,102 +2,91 @@
 import numpy as np
 import tensorflow as tf
 
-def freq_dropout_mask(size, truncate_threshold):
-    """Create a mask for frequency dropout.
-
-        Args:
-            size: int. the height of the image to create a mask for.
-                For a 32x32 image, this should be 32.
-            truncate_threshold: scalar. Tensor of shape (,). All
-                frequencies above this will be set to zero. For an image with
-                a height of 32, a number above 16 will have no effect. For an
-                image with a height of 31, an input above 15 will have no effect.
-
+def freq_dropout_mask(size, truncateThreshold):
+    
+    #create a mask for frequency dropout
+    """
+        Args: 
+            size ------------- integer, height of the image to create a mask for, 
+                               for eg, 32*32 image, it is 32
+            truncate_threshold ---------- scalar, tensor of shape (,)
+            All frequencies above this are set to zero, an image with a height of 32, number above 16 has no effect.
+            For an image with height 31, an input above 15 has no effect
         Returns:
             dropout_mask: Tensor of shape (height, height)
-                The result can be multiplied by the FFT of an image to create
-                a modified FFT where all frequencies above the cutoff have
-                been set to zero. Therefore, the value of the mask will be 1
-                for the frequencies below the truncation level, and 0 for the
-                frequencies above it. In other words, it is really the mask
-                of values to retain, not the mask of values to drop.
+                result ---- multiply by an FFT ---- create a modified FFT where all frequencies above the 
+                cutoff are set to zero. Therefore, value of mask = 1 for frequencies below truncate level, 
+                0 for freqencies above it. Mask of values to retain, not to drop. 
         """
-    truncate_threshold_shape = truncate_threshold.get_shape().as_list()
-    assert len(truncate_threshold_shape) == 0
+    truncateThresholdShape = truncateThreshold.get_shape().as_list()
+    assert len(truncateThresholdShape) == 0
 
-    half_low = size // 2  # round down
+    halfLow = size // 2  # round down
     if size % 2 == 1:
-        half_up = half_low + 1
+        halfUp = halfLow + 1
     else:
-        half_up = half_low
+        halfUp = halfLow
 
-    indice_mask = np.concatenate((np.arange(half_up) , np.arange(half_low, 0, -1))).astype(np.float32)
+    indiceMask = np.concatenate((np.arange(halfUp) , np.arange(halfLow, 0, -1))).astype(np.float32)
 
-    x_spread = np.broadcast_to(indice_mask, (size, size))
-    y_spread = np.broadcast_to(np.expand_dims(indice_mask, -1), (size, size))
-    highest_freq = np.maximum(x_spread, y_spread)
+    xSpread = np.broadcast_to(indiceMask, (size, size))
+    ySpread = np.broadcast_to(np.expand_dims(indiceMask, -1), (size, size))
+    highestFrequency = np.maximum(xSpread, ySpread)
 
-    dropout_mask = tf.cast(tf.less_equal(highest_freq, truncate_threshold), tf.complex64)
+    dropoutMask = tf.cast(tf.less_equal(highestFrequency, truncateThreshold), tf.complex64)
 
-    return dropout_mask
+    return dropoutMask
 
 
-def freq_dropout_test(images, truncate_threshold):
-    """Demonstrate the use of _frequency_dropout_mask.
-
-        Args:
-            images: n-d array of shape (num_images, height, width, num_channels)
-            truncate_threshold: Tensor of shape (,) (i.e. scalar). All
-                frequencies above this will be set to zero. For an image with
-                a height of 32, a number above 16 will have no effect. For an
-                image with a height of 31, an input above 15 will have no effect.
-
+def freq_dropout_test(images, truncateThreshold):
+    # to show the use of _frequency_dropout_mask
+    """
+        Args: 
+            images: n-d array of shape - number of images, height, width, number of channels
+            truncateThreshold: Tensor of shape (,)  - scalar
+            All frequencies above this are set to zero, an image with a height of 32, number above 16 has no effect.
+            For an image with height 31, an input above 15 has no effect
         Returns:
-            sample_images: n-d array of shape (num_images, height, width, num_channels).
+            sample_images: n-d array of shape - number of images, height, width, number of channels
         """
     assert len(images.shape) == 4
     N, H, W, C = images.shape
     assert H == W
 
-    frq_dp_msk = freq_dropout_mask(H, truncate_threshold)
+    frequencydpMask = freq_dropout_mask(H, truncateThreshold)
 
-    tf_images = tf.constant(images, dtype=tf.complex64)
-    tf_images = tf.squeeze(tf_images)
+    tfImages = tf.constant(images, dtype=tf.complex64)
+    tfImages = tf.squeeze(tfImages)
 
-    if len(tf_images.shape)==2:
-        fft_images = tf.signal.fft2d(tf_images)
-        trunc_images = tf.math.multiply(fft_images,frq_dp_msk)
-        sample_images = tf.math.real(tf.signal.ifft2d(trunc_images))
+    if len(tfImages.shape)==2:
+        fftImages = tf.signal.fft2d(tfImages)
+        truncatedImages = tf.math.multiply(fftImages,frequencydpMask)
+        sampleImages = tf.math.real(tf.signal.ifft2d(truncatedImages))
 
-    if len(tf_images.shape)==3:
-        fft_images1 = tf.signal.fft2d(tf_images[:,:,0])
-        fft_images2 = tf.signal.fft2d(tf_images[:,:,1])
-        fft_images3 = tf.signal.fft2d(tf_images[:,:,2])
-        fft_images=[fft_images1,fft_images2,fft_images3]
-        fft_images=np.moveaxis(fft_images, 0, -1)
+    if len(tfImages.shape)==3:
+        fftImages1 = tf.signal.fft2d(tfImages[:,:,0])
+        fftImages2 = tf.signal.fft2d(tfImages[:,:,1])
+        fftImages3 = tf.signal.fft2d(tfImages[:,:,2])
+        fftImages=[fftImages1,fftImages2,fftImages3]
+        fftImages=np.moveaxis(fftImages, 0, -1)
 
-        trunc_images1 = tf.math.multiply(tf.squeeze(fft_images[:,:,0]),frq_dp_msk)
-        trunc_images2 = tf.math.multiply(tf.squeeze(fft_images[:,:,1]),frq_dp_msk)
-        trunc_images3 = tf.math.multiply(tf.squeeze(fft_images[:,:,2]),frq_dp_msk)
-        trunc_images=[trunc_images1,trunc_images2,trunc_images3]
-        trunc_images=np.moveaxis(trunc_images, 0, -1)
+        truncatedImages1 = tf.math.multiply(tf.squeeze(fftImages[:,:,0]),frequencydpMask)
+        truncatedImages2 = tf.math.multiply(tf.squeeze(fftImages[:,:,1]),frequencydpMask)
+        truncatedImages3 = tf.math.multiply(tf.squeeze(fftImages[:,:,2]),frequencydpMask)
+        truncatedImages=[truncatedImages1,truncatedImages2,truncatedImages3]
+        truncatedImages=np.moveaxis(truncatedImages, 0, -1)
 
-        sample_images1 = tf.math.real(tf.signal.ifft2d(trunc_images[:,:,0]))
-        sample_images2 = tf.math.real(tf.signal.ifft2d(trunc_images[:,:,1]))
-        sample_images3 = tf.math.real(tf.signal.ifft2d(trunc_images[:,:,2]))
-        sample_images=[sample_images1,sample_images2,sample_images3]
-        sample_images=np.moveaxis(sample_images, 0, -1)
+        sampleImages1 = tf.math.real(tf.signal.ifft2d(truncatedImages[:,:,0]))
+        sampleImages2 = tf.math.real(tf.signal.ifft2d(truncatedImages[:,:,1]))
+        sampleImages3 = tf.math.real(tf.signal.ifft2d(truncatedImages[:,:,2]))
+        sampleImages=[sampleImages1,sampleImages2,sampleImages3]
+        sampleImages=np.moveaxis(sampleImages, 0, -1)
       
-    if len(tf_images.shape)==4:
+    if len(tfImages.shape)==4:
         
-        tf_images = tf.experimental.numpy.moveaxis(tf_images, 3, 1)
-        images_fft = tf.signal.fft2d(tf_images)
-        # print(images_fft.shape)
-        images_trunc = images_fft * frq_dp_msk
-        images_back = tf.math.real(tf.signal.ifft2d(images_trunc)) 
-        sample_images = images_back
-        # print(type(sample_images))
-        # with tf.compat.v1.Session() as sess:
-            # sample_images = sess.run(images_back)
-
-    return sample_images
+        tfImages = tf.experimental.numpy.moveaxis(tfImages, 3, 1)
+        imagesfft = tf.signal.fft2d(tfImages)
+        imagesTruncated = imagesfft * frequencydpMask
+        imagesBack = tf.math.real(tf.signal.ifft2d(imagesTruncated)) 
+        sampleImages = imagesBack
+    return sampleImages
