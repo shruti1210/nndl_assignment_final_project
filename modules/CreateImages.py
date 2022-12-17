@@ -6,88 +6,104 @@ import numpy as np
 __DEFAULT_PATH = '/home/ecbm4040/Spectral_Representation_for_CNN/Images'
 
 
-def open_image(filename, path=__DEFAULT_PATH):
-    """Open an image file with Pillow."""
-    # To read or write files see open(), and for accessing the filesystem see the os module.
-    # The path parameters can be passed as either strings, or bytes.
-    if filename is None:
-        raise ValueError('Filename is required.')
-    full_path = os.path.join(path, filename)
-    #The Image module provides a class with the same name which is used to represent a PIL image.
-    #The module also provides a number of factory functions, including functions to load images from files, and to create new images.
-    im = Image.open(full_path).convert('RGBA')
-    return im
-
-
-def save_derived_image(im, filename=None, path=__DEFAULT_PATH):
-    """Save a pillow image as a PNG."""
-    if filename is None:
-        # define the filename
-        filename = 'Derived/{0:08x}.png'.format(np.random.randint(2 ** 31))
-    full_path = os.path.join(path, filename)
-    # OS module in Python provides functions for interacting with the operating system.
-    # OS comes under Python’s standard utility modules. This module provides a portable way of using operating system dependent functionality.
-    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-    im.save(full_path, 'PNG')
-
-
-def downscale_image(orig_image, max_width, max_height):
-    """Rescale an image to a smaller image."""
-    orig_width = orig_image.width
-    orig_height = orig_image.height
-
-    # Compute how much to multiply the existing dimensions by
-    width_multo = max_width / orig_width
-    height_multo = max_height / orig_height
-    multo = min(height_multo, width_multo)
-
-    # Create the new image
-    new_width = int(orig_width * multo)
-    new_height = int(orig_height * multo)
-    # Lanczos filtering and Lanczos resampling are two applications of a mathematical formula.
-    # It can be used as a low-pass filter or used to smoothly interpolate the value of a digital signal between its samples.
-    # In the latter case it maps each sample of the given signal to a translated and scaled copy of the Lanczos kernel, which is a sinc function windowed by the central lobe of a second, longer, sinc function. The sum of these translated and scaled kernels is then evaluated at the desired points.
-    new_image = orig_image.resize((new_width, new_height),resample=Image.LANCZOS)
-
-    return new_image
-
-
-def add_to_background(
-    foreground_image,
-    destination_left,
-    destination_top,
-    destination_max_width,
-    destination_max_height,
-    background_image=None,
-    background_width=128,
-    background_height=128,
-):
-    """Add an image to a set image on the jupyter notebook.
-    If background_image == None, the function will create a solid grey background image of dimensions
-    with the form of (background_width, background_height)and paste the image onto that.
+def openImage(file_name, path=__DEFAULT_PATH):
     """
-    if background_image is None:
-        # PIL.Image.new() method creates a new image with the given mode and size.
-        # Size is given as a (width, height)-tuple, in pixels.
-        # The color is given as a single value for single-band images, and a tuple for multi-band images (with one value for each band).
-        new_background_image = Image.new('RGBA',(background_width, background_height),'#7f7f7f')
+    Opening images using Pillow
+    open() ----- to read or write files 
+    os module ---- for accessing the filesystem
+    path parameters ------ passed as strings or bytes 
+    """
+    if file_name is None:
+        raise ValueError('required filename')
+    fullpath = os.path.join(path, file_name)
+    """
+    PIL image is represented using a class with same name in Image Module
+    Image module also provied with factory functions - for eg function to create new images and to load images from the files
+    """
+    image = Image.open(fullpath).convert('RGBA')
+    return image
+
+
+def saveDerivedImage(image, file_name=None, path=__DEFAULT_PATH):
+    #save the pillow images as png
+    if file_name is None:
+        # define the filename
+        file_name = 'Derived/{0:08x}.png'.format(np.random.randint(2 ** 31))
+    fullpath = os.path.join(path, file_name)
+    """
+    Python's OS module ----- functions to interact with operating systems
+    OS - Python's standard utility module ----- a portable way to use operating system dependent functionality
+    """
+    os.makedirs(os.path.dirname(fullpath), exist_ok=True)
+    image.save(fullpath, 'PNG')
+
+
+def downscaleImage(originalImage, maxWidth, maxHeight):
+    #rescale image to a smaller image
+    originalWidth = originalImage.width
+    originalHeight = originalImage.height
+
+    #scaling factor / multiplying factor for existing dimensions
+    widthMultiple = maxWidth / originalWidth
+    heightMultiple = maxHeight / originalHeight
+    multipleFactor = min(heightMultiple, widthMultiple)
+
+    # Generate new images
+    updatedWidth = int(originalWidth * multipleFactor)
+    updatedHeight = int(originalHeight * multipleFactor)
+    """
+    two applications of a mathematical formula - Lanczos filters and Lanczos sampling 
+    ----- Lanczos Filters ------- used as ---- low-pass filter / used to smoothly interpolate the digital signal values between the samples
+    ----- Lanczos resampling ------ maps each sample of the given signal ---- translated and scaled copy ---- of Lanczos kernel 
+    ----- Lanczos kernel - sinc function windowed by the central lobe of a second, longer sinc function
+    ----- Sum of these translated and scaled kernels, evaluated at desired points
+    """
+    updatedImage = originalImage.resize((updatedWidth, updatedHeight),resample=Image.LANCZOS)
+
+    return updatedImage
+
+
+def addToBackground(
+    foregroundImage,
+    destinationLeft,
+    destinationTop,
+    destinationMaxWidth,
+    destinationMaxHeight,
+    backgroundImage=None,
+    backgroundWidth=128,
+    backgroundHeight=128,
+):
+    
+    #Add image to image set in jupyter notebook
+    #If backgroundImage == None, function creates a solid grey background image of dimension - backgroundWidth and backgroundHeight and copy image into it
+
+    if backgroundImage is None:
+
+        """
+        PIL.Image.new() method creates an updated image with provided mode and size
+        size ----- (width, height)-tuple, in pixels
+        the color - single value for single-band images; 
+        and a tuple for multi-band images ( with one value corresponding to each band )
+        """
+        updatedBackgroundImage = Image.new('RGBA',(backgroundWidth, backgroundHeight),'#7f7f7f')
     else:
-        # Copy part of an image
-        new_background_image = background_image.copy()
+        # Copy a part of the image 
+        updatedBackgroundImage = backgroundImage.copy()
 
-    rescaled_foreground_image = downscale_image(foreground_image,destination_max_width,destination_max_height,)
-    new_background_image.paste(rescaled_foreground_image,box=(destination_left, destination_top),mask=rescaled_foreground_image)
+    rescaledForegroundImage = downscaleImage(foregroundImage,destinationMaxWidth,destinationMaxHeight,)
+    updatedBackgroundImage.paste(rescaledForegroundImage,box=(destinationLeft, destinationTop),mask=rescaledForegroundImage)
 
-    return new_background_image
+    return updatedBackgroundImage
 
 
-def make_random_size(destination_width=128, destination_height=128):
+def makeRandomSize(destinationWidth=128, destinationHeight=128):
+    """
+    scale and a new location for the images
+    """
+    scalingFactor = np.random.randint(16,1 + min(destinationWidth, destinationHeight))
+    leftValue = np.random.randint(0, 1 + destinationWidth - scalingFactor)
+    topValue = np.random.randint(0, 1 + destinationHeight - scalingFactor)
+    widthValue = scalingFactor
+    heightValue = scalingFactor
 
-    # define the scale and new destination of an image
-    scale = np.random.randint(16,1 + min(destination_width, destination_height))
-    left = np.random.randint(0, 1 + destination_width - scale)
-    top = np.random.randint(0, 1 + destination_height - scale)
-    width = scale
-    height = scale
-
-    return left, top, width, height
+    return leftValue, topValue, widthValue, heightValue
