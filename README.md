@@ -29,3 +29,26 @@ The directory tree is shown below.
 ![c257e67232afc2bbcd38c8cc52b0da2](https://user-images.githubusercontent.com/90977332/147037884-03a2a7e4-596b-4a33-8322-96773bf1280f.png)
 
 Because the git push shows different local files so the tree can't be import from jupyter note book, but we give a screen shot here, please check!!!
+
+
+
+
+```bash
+├── app
+│   ├── css
+│   │   ├── **/*.css
+│   ├── favicon.ico
+│   ├── images
+│   ├── index.html
+│   ├── js
+│   │   ├── **/*.js
+│   └── partials/template
+├── dist (or build)
+├── node_modules
+├── bower_components (if using bower)
+├── test
+├── Gruntfile.js/gulpfile.js
+├── README.md
+├── package.json
+├── bower.json (if using bower)
+└── .g
